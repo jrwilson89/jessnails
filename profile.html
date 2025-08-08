@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Profile</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .appointment { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    button { margin-top: 5px; }
+    .reschedule-form { margin-top: 10px; display: none; }
+  </style>
+</head>
+<body>
+  <h2>My Profile</h2>
+  <div id="userInfo"></div>
+  <h3>My Appointments</h3>
+  <div id="appointments"></div>
+
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import {
+      doc, getDoc, collection, getDocs, updateDoc, deleteDoc, Timestamp, query, where
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { updateEmail as fbUpdateEmail, updatePassword as fbUpdatePassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, async user => {
+      if (!user) return window.location.href = "login.html";
+      currentUser = user;
+      const profileSnap = await getDoc(doc(db, "users", user.uid));
+      if (!profileSnap.exists()) return;
+
+      const profile = profileSnap.data();
+      document.getElementById("userInfo").innerHTML = `
+        <p><strong>Email:</strong> <input type="email" id="email" value="${user.email}"> <button onclick="updateEmail()">Update Email</button></p>
+        <p><strong>Name:</strong> ${profile.firstName} ${profile.lastName}</p>
+        <p><strong>Phone:</strong> <input type="text" id="phone" value="${profile.phone}"> <button onclick="updatePhone()">Update Phone</button></p>
+        <p><strong>Change Password:</strong> <input type="password" id="newPassword" placeholder="New Password"> <button onclick="updatePassword()">Change Password</button></p>
+        `;
+
+
+      await loadAppointments();
+    });
+
+    async function getStaffMap() {
+      const staffMap = {};
+      const staffSnap = await getDocs(collection(db, "staffProfiles"));
+      staffSnap.forEach(doc => {
+        staffMap[doc.id] = doc.data().name;
+      });
+      return staffMap;
+    }
+
+    async function loadAppointments() {
+      const staffMap = await getStaffMap();
+
+      const q = query(collection(db, "appointments"), where("userId", "==", currentUser.uid));
+      const snap = await getDocs(q);
+      const container = document.getElementById("appointments");
+      container.innerHTML = "";
+
+      if (snap.empty) {
+        container.innerHTML = "<p>No appointments found.</p>";
+        return;
+      }
+
+      snap.forEach(docSnap => {
+        const appt = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "appointment";
+
+        const staffName = staffMap[appt.staffId] || appt.staffId;
+
+        div.innerHTML = `
+          <p><strong>Date:</strong> ${appt.date}</p>
+          <p><strong>Time:</strong> ${appt.time}</p>
+          <p><strong>Staff:</strong> ${staffName}</p>
+          <p><strong>Duration:</strong> ${appt.duration} min</p>
+          <p><strong>Services:</strong> ${(appt.services || []).map(s => s.name).join(", ")}</p>
+          <button onclick="showRescheduleForm('${docSnap.id}', '${appt.staffId}')">Reschedule</button>
+          <button onclick="cancelAppointment('${docSnap.id}')">Cancel</button>
+          <div id="reschedule-${docSnap.id}" class="reschedule-form">
+            <input type="date" id="newDate-${docSnap.id}">
+            <input type="time" id="newTime-${docSnap.id}">
+            <button onclick="submitReschedule('${docSnap.id}', '${appt.staffId}', ${appt.duration})">Save</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.showRescheduleForm = (id) => {
+      document.getElementById(`reschedule-${id}`).style.display = "block";
+    }
+
+    window.submitReschedule = async (id, staffId, duration) => {
+      const newDate = document.getElementById(`newDate-${id}`).value;
+      const newTime = document.getElementById(`newTime-${id}`).value;
+      if (!newDate || !newTime) {
+        alert("Please select both date and time.");
+        return;
+      }
+
+      // Optional: check staff availability here before updating
+      await updateDoc(doc(db, "appointments", id), {
+        date: newDate,
+        time: newTime,
+        bookedAt: Timestamp.now()
+      });
+      alert("Appointment rescheduled.");
+      await loadAppointments();
+    }
+
+    window.cancelAppointment = async (id) => {
+      const confirmDelete = confirm("Cancel this appointment?");
+      if (!confirmDelete) return;
+      await deleteDoc(doc(db, "appointments", id));
+      alert("Appointment canceled.");
+      await loadAppointments();
+    }
+
+    window.updatePhone = async () => {
+    const phone = document.getElementById("phone").value.trim();
+    if (!phone) return alert("Phone number cannot be empty.");
+    try {
+        await updateDoc(doc(db, "users", currentUser.uid), { phone });
+        alert("Phone number updated.");
+    } catch (error) {
+        alert("Failed to update phone number: " + error.message);
+    }
+    };
+  </script>
+</body>
+</html>

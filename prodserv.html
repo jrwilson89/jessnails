@@ -1,0 +1,78 @@
+<!-- services.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Select Services</title>
+  <style>
+    label { display: block; margin-bottom: 8px; }
+    #totalTime { font-weight: bold; margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <h2>Select Services</h2>
+
+  <form id="servicesForm">
+    <img src="./images/manicure.jpg" style="width: 100px; height: 100px;">
+    <label><input type="checkbox" value="Manicure" data-duration="30">Manicure (30 min)</label>
+    
+    <img src="./images/drymani.jpg" style="width: 100px; height: 100px;">
+    <label><input type="checkbox" value="Dry Manicure" data-duration="30"> Dry Manicure (30 min)</label>
+    <img src="./images/gelmani.png" style="width: 100px; height: 100px;">
+    <label><input type="checkbox" value="Manicure With Gel" data-duration="45"> Manicure With Gel (45 min)</label>
+    <img src="./images/menmani.jpg" style="width: 100px; height: 100px;">
+    <label><input type="checkbox" value="Men's Manicure" data-duration="45"> Men's Manicure (45 min)</label>
+
+    <p id="totalTime">Total Time: 0 minutes</p>
+    <button type="submit">Continue to Booking</button>
+  </form>
+
+  <script type="module">
+    import { db } from './firebase-config.js';
+    import { collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { auth, onAuthStateChanged } from './firebase-config.js';
+    
+    const form = document.getElementById("servicesForm");
+    const totalTimeDisplay = document.getElementById("totalTime");
+
+    let selectedServices = [];
+    let totalDuration = 0;
+    let userId = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) window.location.href = "login.html";
+      userId = user.uid;
+    });
+
+    form.addEventListener("change", () => {
+      const checkboxes = form.querySelectorAll("input[type=checkbox]");
+      selectedServices = [];
+      totalDuration = 0;
+
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          selectedServices.push({
+            name: cb.value,
+            duration: parseInt(cb.dataset.duration)
+          });
+          totalDuration += parseInt(cb.dataset.duration);
+        }
+      });
+
+      totalTimeDisplay.textContent = `Total Time: ${totalDuration} minutes`;
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (userId && selectedServices.length > 0) {
+        await setDoc(doc(db, "serviceSelections", userId), {
+          services: selectedServices,
+          totalDuration
+        });
+        window.location.href = "booking.html";
+      } else {
+        alert("Please select at least one service.");
+      }
+    });
+  </script>
+</body>
+</html>

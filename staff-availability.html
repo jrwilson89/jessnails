@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Staff Availability Editor</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import {
+      getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, updateDoc, Timestamp
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import {
+      getAuth, onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWQ7omdG6SH8RbMHNnvB4TER7G9vLEVB8",
+      authDomain: "jess-nails-9e179.firebaseapp.com",
+      projectId: "jess-nails-9e179",
+      storageBucket: "jess-nails-9e179.appspot.com",
+      messagingSenderId: "983268556246",
+      appId: "1:983268556246:web:7d66dce2d08a222cb43877"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById("staffInfo").innerText = `Logged in as: ${user.displayName || user.email}`;
+        document.getElementById("editor").style.display = "block";
+      } else {
+        window.location.href = "/login.html";
+      }
+    });
+
+    function generateTimeSlots(start, end) {
+      const slots = [];
+      let [sh, sm] = start.split(":" ).map(Number);
+      let [eh, em] = end.split(":" ).map(Number);
+      let current = new Date();
+      current.setHours(sh, sm);
+      const endTime = new Date();
+      endTime.setHours(eh, em);
+
+      while (current < endTime) {
+        const hours = current.getHours();
+        const minutes = current.getMinutes();
+        const suffix = hours >= 12 ? "PM" : "AM";
+        const displayHours = ((hours + 11) % 12 + 1);
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        slots.push(`${displayHours}:${displayMinutes} ${suffix}`);
+        current.setMinutes(current.getMinutes() + 15);
+      }
+      return slots;
+    }
+
+    document.getElementById("generateBtn").onclick = () => {
+      const date = document.getElementById("date").value;
+      const start = document.getElementById("startTime").value;
+      const end = document.getElementById("endTime").value;
+      const previewDiv = document.getElementById("preview");
+      previewDiv.innerHTML = "";
+
+      if (!date || !start || !end) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const slots = generateTimeSlots(start, end);
+      if (slots.length === 0) {
+        alert("Invalid time range.");
+        return;
+      }
+
+      slots.forEach(time => {
+        const div = document.createElement("div");
+        div.innerText = time;
+        previewDiv.appendChild(div);
+      });
+
+      document.getElementById("saveBtn").onclick = async () => {
+        const docRef = doc(db, "availability", currentUser.uid, "dates", date);
+        await setDoc(docRef, { times: slots });
+        alert("Availability saved.");
+        loadExisting(date);
+        loadAppointments(date);
+      };
+    };
+
+    document.getElementById("viewBtn").onclick = () => {
+      const date = document.getElementById("date").value;
+      if (!date) {
+        alert("Please select a date to view availability.");
+        return;
+      }
+      loadExisting(date);
+      loadAppointments(date);
+    };
+
+    async function loadExisting(date) {
+      const previewDiv = document.getElementById("existing");
+      previewDiv.innerHTML = "<h3>Existing Availability</h3>";
+
+      const docRef = doc(db, "availability", currentUser.uid, "dates", date);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) {
+        previewDiv.innerHTML += "<p>No availability set for this date.</p>";
+        return;
+      }
+
+      const times = docSnap.data().times || [];
+      if (times.length === 0) {
+        previewDiv.innerHTML += "<p>No time slots saved.</p>";
+        return;
+      }
+
+      times.forEach(t => {
+        const div = document.createElement("div");
+        div.textContent = t;
+        previewDiv.appendChild(div);
+      });
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete This Availability";
+      deleteBtn.onclick = async () => {
+        await deleteDoc(docRef);
+        previewDiv.innerHTML = "<p>Availability deleted.</p>";
+      };
+      previewDiv.appendChild(deleteBtn);
+    }
+
+    
+
+    document.getElementById("viewAllBtn").onclick = async () => {
+  const container = document.getElementById("allAppointments");
+  container.innerHTML = "<h3>All Booked Appointments</h3>";
+
+  const q = query(
+    collection(db, "appointments"),
+    where("staffId", "==", currentUser.uid)
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) {
+    container.innerHTML += "<p>No booked appointments found.</p>";
+    return;
+  }
+
+  // Sort by date and time
+  const sorted = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  sorted.forEach(app => {
+    const div = document.createElement("div");
+    div.style.border = "1px solid #ccc";
+    div.style.padding = "10px";
+    div.style.margin = "5px 0";
+    div.innerHTML = `
+        <strong>${app.date}</strong> at <strong>${app.time}</strong><br>
+        Customer: ${app.customerName}<br>
+        Phone: ${app.phone}<br>
+        Services:
+        <ul>
+        ${(app.services || []).map(s => `<li>${s.name} (${s.duration} min)</li>`).join("")}
+        </ul>
+
+        <label>New Date: <input type="date" value="${app.date}" id="newDate-${app.id}"></label><br>
+        <label>New Time: <input type="text" value="${app.time}" id="newTime-${app.id}"></label><br>
+
+        <button onclick="rescheduleAppointment('${app.id}')">Reschedule</button>
+        <button onclick="cancelAppointment('${app.id}')">Cancel</button>
+        `;
+    container.appendChild(div);
+  });
+};
+
+
+
+    async function loadAppointments(date) {
+      const appointmentsDiv = document.getElementById("appointments");
+      appointmentsDiv.innerHTML = "<h3>Booked Appointments</h3>";
+
+      const q = query(collection(db, "appointments"), where("date", "==", date), where("staffId", "==", currentUser.uid));
+      const snap = await getDocs(q);
+      if (snap.empty) {
+        appointmentsDiv.innerHTML += "<p>No appointments booked for this date.</p>";
+        return;
+      }
+
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const div = document.createElement("div");
+        div.innerHTML = `
+          <strong>${data.customerName}</strong><br>
+          Time: ${data.time}<br>
+          Phone: ${data.phone}<br>
+          <button onclick="reschedule('${docSnap.id}', '${data.time}')">Reschedule</button>
+          <button onclick="cancelAppointment('${docSnap.id}')">Cancel</button>
+        `;
+        appointmentsDiv.appendChild(div);
+      });
+    }
+
+    window.reschedule = async (id, oldTime) => {
+      const newTime = prompt("Enter new time (e.g., 2:30 PM):", oldTime);
+      if (!newTime) return;
+      const ref = doc(db, "appointments", id);
+      await updateDoc(ref, { time: newTime });
+      alert("Appointment rescheduled.");
+      const date = document.getElementById("date").value;
+      loadAppointments(date);
+    }
+
+    window.cancelAppointment = async (id) => {
+      if (!confirm("Are you sure you want to cancel this appointment?")) return;
+      await deleteDoc(doc(db, "appointments", id));
+      alert("Appointment canceled.");
+      const date = document.getElementById("date").value;
+      loadAppointments(date);
+    }
+
+window.rescheduleAppointment = async (id) => {
+  const newDate = document.getElementById(`newDate-${id}`).value;
+  const newTime = document.getElementById(`newTime-${id}`).value;
+
+  if (!newDate || !newTime) {
+    alert("Please enter both a new date and time.");
+    return;
+  }
+
+  const docRef = doc(db, "appointments", id);
+  await updateDoc(docRef, {
+    date: newDate,
+    time: newTime
+  });
+
+  alert("Appointment rescheduled.");
+  document.getElementById("viewAllBtn").click(); // Refresh the list
+};
+
+window.cancelAppointment = async (id) => {
+  if (confirm("Are you sure you want to cancel this appointment?")) {
+    await deleteDoc(doc(db, "appointments", id));
+    alert("Appointment canceled.");
+    document.getElementById("viewAllBtn").click(); // Refresh
+  }
+};
+
+  </script>
+  <style>
+    body { font-family: sans-serif; margin: 20px; }
+    input, button { margin: 5px 0; }
+    #preview div, #existing div, #appointments div { padding: 5px; background: #f0f0f0; margin: 2px 0; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h2>Staff Availability Editor</h2>
+  <div id="staffInfo"></div>
+
+  <div id="editor" style="display:none;">
+    <label>Select Date: <input type="date" id="date"></label><br>
+    <label>Start Time: <input type="time" id="startTime"></label><br>
+    <label>End Time: <input type="time" id="endTime"></label><br>
+
+    <button id="generateBtn">Generate Slots</button>
+    <button id="viewBtn">View Existing</button>
+    <button id="viewAllBtn">View All Booked Appointments</button>
+
+    <h3>Generated Time Slots</h3>
+    <div id="preview"></div>
+    <button id="saveBtn">Save Availability</button>
+
+    <div id="existing"></div>
+    <div id="allAppointments"></div>
+
+    <div id="appointments"></div>
+  </div>
+</body>
+</html>

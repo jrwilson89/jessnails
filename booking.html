@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book an Appointment</title>
+  <style>
+    button { margin: 5px; }
+    select { margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+  <h2>Book an Appointment</h2>
+
+  <select id="staffSelect"><option value="">-- Select Staff --</option></select>
+  <div id="calendar"></div>
+  <div id="availableSlots"></div>
+  <button id="bookBtn" style="display:none;">Book Appointment</button>
+
+  <script type="module">
+    import { auth, db } from './firebase-config.js';
+    import {
+      doc, getDoc, collection, getDocs, query, where, Timestamp, addDoc, setDoc
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    let currentUser = null;
+    let selectedStaff = null;
+    let selectedDate = null;
+    let selectedTime = null;
+    let totalDuration = 0;
+    let userProfile = null;
+    let selectedServicesArray = [];
+
+    const staffSelect = document.getElementById("staffSelect");
+    const calendarDiv = document.getElementById("calendar");
+    const slotsDiv = document.getElementById("availableSlots");
+    const bookBtn = document.getElementById("bookBtn");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return window.location.href = "login.html";
+      currentUser = user;
+
+      const profileDoc = await getDoc(doc(db, "users", user.uid));
+      const serviceDoc = await getDoc(doc(db, "serviceSelections", user.uid));
+      if (!profileDoc.exists()) {
+        alert("Missing user profile.");
+        return;
+        }
+
+        if (!serviceDoc.exists() || !(serviceDoc.data().services || []).length) {
+        alert("Please select at least one service before booking.");
+        return window.location.href = "prodserv.html"; // or your actual service selection page
+}
+
+
+      userProfile = profileDoc.data();
+        const serviceData = serviceDoc.data();
+        totalDuration = serviceData.totalDuration || 0;
+        selectedServicesArray = serviceData.services || [];
+
+      await loadStaff();
+      renderCalendar();
+    });
+
+    async function loadStaff() {
+      const staffSnap = await getDocs(collection(db, "staffProfiles"));
+      staffSnap.forEach(docSnap => {
+        const option = document.createElement("option");
+        option.value = docSnap.id;
+        option.textContent = docSnap.data().name;
+        staffSelect.appendChild(option);
+      });
+    }
+
+    staffSelect.addEventListener("change", async () => {
+    selectedStaff = staffSelect.value;
+    slotsDiv.innerHTML = "";
+    calendarDiv.innerHTML = "";
+    if (selectedStaff) await renderCalendar();
+    });
+
+
+    async function renderCalendar() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    calendarDiv.innerHTML = "<h3>Select a Date</h3>";
+
+    if (!selectedStaff) return;
+
+    const availabilityRef = collection(db, "availability", selectedStaff, "dates");
+    const availabilitySnap = await getDocs(availabilityRef);
+    const availableDates = [];
+
+    availabilitySnap.forEach(docSnap => {
+        const times = docSnap.data().times || [];
+        const dateStr = docSnap.id;
+
+        // Only include dates with enough consecutive slots for totalDuration
+        const slotCount = totalDuration / 15;
+        const slotSet = new Set(times);
+        for (let i = 0; i <= times.length - slotCount; i++) {
+        const canFit = times.slice(i, i + slotCount).every(t => slotSet.has(t));
+        if (canFit) {
+            availableDates.push(dateStr);
+            break;
+        }
+        }
+    });
+
+    const upcomingDates = Array.from({ length: 21 }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        return d.toISOString().split("T")[0];
+    });
+
+    const datesToShow = upcomingDates.filter(d => availableDates.includes(d));
+
+    if (datesToShow.length === 0) {
+        calendarDiv.innerHTML += "<p>No available dates for selected services.</p>";
+        return;
+    }
+
+    for (const dateStr of datesToShow) {
+        const dateObj = new Date(dateStr);
+        const displayDate = `${dateObj.getMonth() + 1}/${dateObj.getDate()}/${dateObj.getFullYear()}`;
+
+        const btn = document.createElement("button");
+        btn.textContent = displayDate;
+        btn.onclick = () => {
+        selectedDate = dateStr;
+        loadSlots(dateStr);
+        };
+        calendarDiv.appendChild(btn);
+    }
+    }
+
+
+    async function loadSlots(dateStr) {
+      slotsDiv.innerHTML = "";
+      selectedTime = null;
+      bookBtn.style.display = "none";
+
+      const availDoc = await getDoc(doc(db, "availability", selectedStaff, "dates", dateStr));
+      if (!availDoc.exists()) {
+        slotsDiv.innerHTML = "<p>No availability.</p>";
+        return;
+      }
+
+      const allTimes = availDoc.data().times || [];
+
+      const bookedSnap = await getDocs(query(
+        collection(db, "appointments"),
+        where("date", "==", dateStr),
+        where("staffId", "==", selectedStaff)
+      ));
+
+      const bookedTimes = bookedSnap.docs.map(doc => doc.data().time);
+      const slotMap = new Set(bookedTimes);
+
+      const availableStartTimes = allTimes.filter((_, idx, arr) => {
+        const slotCount = totalDuration / 15;
+        if (idx + slotCount > arr.length) return false;
+        for (let i = 0; i < slotCount; i++) {
+          if (slotMap.has(arr[idx + i])) return false;
+        }
+        return true;
+      });
+
+      if (availableStartTimes.length === 0) {
+        slotsDiv.innerHTML = "<p>No slots for selected services.</p>";
+        return;
+      }
+
+      availableStartTimes.forEach(time => {
+        const btn = document.createElement("button");
+        btn.textContent = `${time} (${totalDuration} min)`;
+        btn.onclick = () => {
+          selectedTime = time;
+          document.querySelectorAll("#availableSlots button").forEach(b => b.style.backgroundColor = "");
+          btn.style.backgroundColor = "lightgreen";
+          bookBtn.style.display = "inline";
+        };
+        slotsDiv.appendChild(btn);
+      });
+    }
+
+    bookBtn.addEventListener("click", async () => {
+        if (!selectedDate || !selectedTime || !userProfile || !selectedStaff) return;
+
+        const appointmentData = {
+            userId: currentUser.uid,
+            staffId: selectedStaff,
+            customerName: `${userProfile.firstName} ${userProfile.lastName}`,
+            phone: userProfile.phone,
+            date: selectedDate,
+            time: selectedTime,
+            duration: totalDuration,
+            services: selectedServicesArray,
+            bookedAt: Timestamp.now()
+        };
+
+        await addDoc(collection(db, "appointments"), appointmentData);
+        alert("Appointment booked!");
+
+        // Reset service selections in Firestore
+        await setDoc(doc(db, "serviceSelections", currentUser.uid), {
+            services: [],
+            totalDuration: 0
+        });
+
+        // ✅ Reset all selections and UI
+        selectedStaff = null;
+        selectedDate = null;
+        selectedTime = null;
+        totalDuration = 0;
+        selectedServicesArray = [];
+
+        staffSelect.value = "";
+        calendarDiv.innerHTML = "";
+        slotsDiv.innerHTML = "";
+        bookBtn.style.display = "none";
+
+        // Optional: re-render calendar in case you want user to book another
+        renderCalendar();
+        });
+
+
+    
+
+
+    
+  </script>
+</body>
+</html>
