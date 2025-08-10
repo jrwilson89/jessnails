@@ -1,64 +1,110 @@
-<!-- services.html -->
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Select Services</title>
   <style>
     label { display: block; margin-bottom: 8px; }
     #totalTime { font-weight: bold; margin-top: 15px; }
   </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="watermark">
+    <nav class="navbar">
+    <div class="navbar-logo">
+      <a href="index.html">
+        <img src="images/jn-logo.jpg" alt="Jess Nails Logo" />
+      </a>
+    </div>
+
+    <!-- Hamburger Icon -->
+    <div class="hamburger" id="hamburger">
+      <span id="hamburger-icon">☰</span>
+      <span id="close-icon" style="display: none;">✕</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="navbar-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="prodserv.html">Services</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+  </nav>
+  <div class="backdrop" id="backdrop"></div>
   <h2>Select Services</h2>
 
   <form id="servicesForm">
-    <img src="./images/manicure.jpg" style="width: 100px; height: 100px;">
-    <label><input type="checkbox" value="Manicure" data-duration="30">Manicure (30 min)</label>
-    
-    <img src="./images/drymani.jpg" style="width: 100px; height: 100px;">
-    <label><input type="checkbox" value="Dry Manicure" data-duration="30"> Dry Manicure (30 min)</label>
-    <img src="./images/gelmani.png" style="width: 100px; height: 100px;">
-    <label><input type="checkbox" value="Manicure With Gel" data-duration="45"> Manicure With Gel (45 min)</label>
-    <img src="./images/menmani.jpg" style="width: 100px; height: 100px;">
-    <label><input type="checkbox" value="Men's Manicure" data-duration="45"> Men's Manicure (45 min)</label>
-
+    <div id="dynamicServices"></div>
     <p id="totalTime">Total Time: 0 minutes</p>
+    <p id="totalPrice">Total Price: $0</p>
     <button type="submit">Continue to Booking</button>
   </form>
 
+
   <script type="module">
     import { db } from './firebase-config.js';
-    import { collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import {
+      collection, doc, setDoc, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
     import { auth, onAuthStateChanged } from './firebase-config.js';
-    
+
     const form = document.getElementById("servicesForm");
+    const dynamicServices = document.getElementById("dynamicServices");
     const totalTimeDisplay = document.getElementById("totalTime");
 
     let selectedServices = [];
     let totalDuration = 0;
+    let totalPrice = 0;
     let userId = null;
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) window.location.href = "login.html";
       userId = user.uid;
+
+      const snap = await getDocs(collection(db, "services"));
+      snap.forEach(docSnap => {
+        const data = docSnap.data();
+
+        const wrapper = document.createElement("div");
+        wrapper.style.marginBottom = "12px";
+wrapper.innerHTML = `
+  <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; border: 1px solid #ddd; border-radius: 8px; max-width: 300px;">
+    <img src="${data.imageUrl}" style="width:100px; height:100px; object-fit: cover; border-radius: 6px;">
+    <label style="display: flex; align-items: flex-start; gap: 6px;">
+      <input type="checkbox" style="margin-top: 20px" value="${data.name}" data-duration="${data.duration}" data-price="${data.price}">
+      <div style="line-height: 1.4;">
+        <div><strong>${data.name}</strong></div>
+        <div>${data.duration} min</div>
+        <div>$${data.price}</div>
+      </div>
+    </label>
+  </div>
+`;
+
+
+        dynamicServices.appendChild(wrapper);
+      });
     });
 
     form.addEventListener("change", () => {
       const checkboxes = form.querySelectorAll("input[type=checkbox]");
       selectedServices = [];
       totalDuration = 0;
+      totalPrice = 0;
 
       checkboxes.forEach(cb => {
         if (cb.checked) {
-          selectedServices.push({
-            name: cb.value,
-            duration: parseInt(cb.dataset.duration)
-          });
-          totalDuration += parseInt(cb.dataset.duration);
+          const duration = parseInt(cb.dataset.duration);
+          const price = parseFloat(cb.dataset.price);
+          selectedServices.push({ name: cb.value, duration, price });
+          totalDuration += duration;
+          totalPrice += price;
         }
       });
 
       totalTimeDisplay.textContent = `Total Time: ${totalDuration} minutes`;
+      document.getElementById("totalPrice").textContent = `Total Price: $${totalPrice.toFixed(2)}`;
     });
 
     form.addEventListener("submit", async (e) => {
@@ -66,7 +112,8 @@
       if (userId && selectedServices.length > 0) {
         await setDoc(doc(db, "serviceSelections", userId), {
           services: selectedServices,
-          totalDuration
+          totalDuration,
+          totalPrice
         });
         window.location.href = "booking.html";
       } else {
@@ -74,5 +121,6 @@
       }
     });
   </script>
+
 </body>
 </html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manage Services</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .service-item { margin-bottom: 10px; border: 1px solid #ccc; padding: 10px; }
+    .service-item input { margin-right: 5px; }
+  </style>
+</head>
+<body>
+      <nav class="navbar">
+    <div class="navbar-logo">
+      <a href="index.html">
+        <img src="images/jn-logo.jpg" alt="Jess Nails Logo" />
+      </a>
+    </div>
+
+    <!-- Hamburger Icon -->
+    <div class="hamburger" id="hamburger">
+      <span id="hamburger-icon">☰</span>
+      <span id="close-icon" style="display: none;">✕</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="navbar-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="prodserv.html">Services</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+  </nav>
+  <div class="backdrop" id="backdrop"></div>
+  <h2>Manage Services</h2>
+
+    <form id="addServiceForm">
+        <input type="text" id="serviceName" placeholder="Service Name" required>
+        <input type="number" id="serviceDuration" placeholder="Duration (min)" required>
+        <input type="number" id="servicePrice" placeholder="Price ($)" required step="0.01">
+        <input type="file" id="serviceImage" accept="image/*" required>
+        <button type="submit">Add Service</button>
+    </form>
+
+  <h3>Existing Services</h3>
+  <div id="servicesList"></div>
+
+  <script type="module">
+    import { db, auth, storage } from './firebase-config.js';
+    import {
+    collection, getDocs, addDoc, updateDoc, deleteDoc, doc
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import {
+    ref, uploadBytes, getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-storage.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+    const addForm = document.getElementById("addServiceForm");
+    const serviceName = document.getElementById("serviceName");
+    const serviceDuration = document.getElementById("serviceDuration");
+    const servicePrice = document.getElementById("servicePrice");
+    const serviceImage = document.getElementById("serviceImage");
+    const servicesList = document.getElementById("servicesList");
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, async (user) => {
+    if (!user) return window.location.href = "login.html";
+    currentUser = user;
+    loadServices();
+    });
+
+    async function loadServices() {
+    servicesList.innerHTML = "";
+    const snap = await getDocs(collection(db, "services"));
+    snap.forEach(docSnap => {
+        const data = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "service-item";
+        div.innerHTML = `
+        <img src="${data.imageUrl}" style="width:100px;height:100px;"><br>
+        <input type="text" value="${data.name}" class="name-input">
+        <input type="number" value="${data.duration}" class="duration-input">
+        <input type="number" value="${data.price}" class="price-input">
+        <button class="saveBtn">Save</button>
+        <button class="deleteBtn">Delete</button>
+        `;
+        servicesList.appendChild(div);
+
+        div.querySelector(".saveBtn").onclick = async () => {
+        const name = div.querySelector(".name-input").value;
+        const duration = parseInt(div.querySelector(".duration-input").value);
+        const price = parseFloat(div.querySelector(".price-input").value);
+        await updateDoc(doc(db, "services", docSnap.id), { name, duration, price });
+        alert("Service updated");
+        };
+
+        div.querySelector(".deleteBtn").onclick = async () => {
+        if (confirm("Delete this service?")) {
+            await deleteDoc(doc(db, "services", docSnap.id));
+            loadServices();
+        }
+        };
+    });
+    }
+
+    addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const file = serviceImage.files[0];
+    if (!file) return alert("Image is required");
+
+    const imageRef = ref(storage, `serviceImages/${Date.now()}_${file.name}`);
+    await uploadBytes(imageRef, file);
+    const imageUrl = await getDownloadURL(imageRef);
+
+    const newService = {
+        name: serviceName.value.trim(),
+        duration: parseInt(serviceDuration.value),
+        price: parseFloat(servicePrice.value),
+        imageUrl
+    };
+
+    await addDoc(collection(db, "services"), newService);
+    addForm.reset();
+    loadServices();
+    });
+</script>
+  <script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  const backdrop = document.getElementById('backdrop');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  function toggleMenu() {
+    const isOpen = navLinks.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+
+    // Toggle icons
+    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+    closeIcon.style.display = isOpen ? 'inline' : 'none';
+  }
+
+  hamburger.addEventListener('click', toggleMenu);
+
+  // Optional: clicking backdrop closes menu
+  backdrop.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    backdrop.classList.remove('show');
+    hamburgerIcon.style.display = 'inline';
+    closeIcon.style.display = 'none';
+  });
+</script>
+
+</body>
+</html>

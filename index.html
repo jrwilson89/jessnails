@@ -1,11 +1,61 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jess Nails</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="watermark">
+    <nav class="navbar">
+    <div class="navbar-logo">
+      <a href="index.html">
+        <img src="images/jn-logo.jpg" alt="Jess Nails Logo" />
+      </a>
+    </div>
+
+    <!-- Hamburger Icon -->
+    <div class="hamburger" id="hamburger">
+      <span id="hamburger-icon">☰</span>
+      <span id="close-icon" style="display: none;">✕</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="navbar-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="prodserv.html">Services</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+  </nav>
+  <div class="backdrop" id="backdrop"></div>
   <h1>Welcome to Jess Nails</h1>
   <a href="register.html">Register</a>
   <a href="login.html">Login</a>
+    <script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  const backdrop = document.getElementById('backdrop');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  function toggleMenu() {
+    const isOpen = navLinks.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+
+    // Toggle icons
+    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+    closeIcon.style.display = isOpen ? 'inline' : 'none';
+  }
+
+  hamburger.addEventListener('click', toggleMenu);
+
+  // Optional: clicking backdrop closes menu
+  backdrop.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    backdrop.classList.remove('show');
+    hamburgerIcon.style.display = 'inline';
+    closeIcon.style.display = 'none';
+  });
+</script>
 </body>
 </html>

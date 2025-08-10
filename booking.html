@@ -1,18 +1,47 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book an Appointment</title>
   <style>
     button { margin: 5px; }
     select { margin-bottom: 15px; }
   </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="watermark">
+    <nav class="navbar">
+    <div class="navbar-logo">
+      <a href="index.html">
+        <img src="images/jn-logo.jpg" alt="Jess Nails Logo" />
+      </a>
+    </div>
+
+    <!-- Hamburger Icon -->
+    <div class="hamburger" id="hamburger">
+      <span id="hamburger-icon">☰</span>
+      <span id="close-icon" style="display: none;">✕</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="navbar-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="prodserv.html">Services</a></li>
+      <li><a href="profile.html">Profile</a></li>
+    </ul>
+  </nav>
+  <div class="backdrop" id="backdrop"></div>
   <h2>Book an Appointment</h2>
 
   <select id="staffSelect"><option value="">-- Select Staff --</option></select>
   <div id="calendar"></div>
   <div id="availableSlots"></div>
+  <div id="selectedServices"></div>
+  <p id="totalTime"></p>
+  <p id="totalPrice"></p>
+
+  
   <button id="bookBtn" style="display:none;">Book Appointment</button>
 
   <script type="module">
@@ -57,9 +86,27 @@
         totalDuration = serviceData.totalDuration || 0;
         selectedServicesArray = serviceData.services || [];
 
+        const totalPrice = serviceData.totalPrice || 0;
+
+        // 🟢 Display selected services
+        const servicesHTML = selectedServicesArray.map(s =>
+          `${s.name} (${s.duration} min, $${s.price})`
+        ).join("<br>");
+        document.getElementById("selectedServices").innerHTML = `<strong>Selected Services:</strong><br>${servicesHTML}`;
+
+        // 🟢 Display total time
+        document.getElementById("totalTime").innerHTML = `<strong>Total Time:</strong> ${totalDuration} minutes`;
+
+        // 🟢 Display total price
+        document.getElementById("totalPrice").innerHTML = `<strong>Total Price:</strong> $${totalPrice.toFixed(2)}`;
+
+        
+
       await loadStaff();
       renderCalendar();
     });
+
+    
 
     async function loadStaff() {
       const staffSnap = await getDocs(collection(db, "staffProfiles"));
@@ -199,8 +246,7 @@
         };
 
         await addDoc(collection(db, "appointments"), appointmentData);
-        alert("Appointment booked!");
-
+        window.location.href = "confirmation.html";
         // Reset service selections in Firestore
         await setDoc(doc(db, "serviceSelections", currentUser.uid), {
             services: [],
@@ -229,5 +275,31 @@
 
     
   </script>
+    <script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  const backdrop = document.getElementById('backdrop');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  function toggleMenu() {
+    const isOpen = navLinks.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+
+    // Toggle icons
+    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+    closeIcon.style.display = isOpen ? 'inline' : 'none';
+  }
+
+  hamburger.addEventListener('click', toggleMenu);
+
+  // Optional: clicking backdrop closes menu
+  backdrop.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    backdrop.classList.remove('show');
+    hamburgerIcon.style.display = 'inline';
+    closeIcon.style.display = 'none';
+  });
+</script>
 </body>
 </html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Booking Confirmation</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .confirmation {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .confirmation h2 {
+      color: var(--color-accent);
+      margin-bottom: 20px;
+    }
+
+    .confirmation .summary {
+      background-color: var(--color-muted);
+      padding: 20px;
+      border-radius: 10px;
+      display: inline-block;
+      text-align: left;
+    }
+
+    .summary ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .summary li {
+      margin-bottom: 10px;
+    }
+
+    .btn-home {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body class="watermark">
+  <div class="container confirmation">
+    <img src="./images/jn-logo.jpg" class="logo" alt="Jess Nails Logo" />
+    <h2>Booking Confirmed!</h2>
+    <p>Thank you for booking with <strong>Jess Nails</strong>. Here are your appointment details:</p>
+
+    <div class="summary" id="summaryBox">
+      <ul id="serviceList"></ul>
+      <li><strong>Date:</strong> <span id="appointmentDate"></span></li>
+      <li><strong>Time:</strong> <span id="appointmentTime"></span></li>
+      <li><strong>Staff:</strong> <span id="staffName"></span></li>
+      <li><strong>Total Duration:</strong> <span id="totalDuration"></span> minutes</li>
+      <li><strong>Total Price:</strong> $<span id="totalPrice"></span></li>
+    </div>
+
+    <div class="btn-home">
+      <a href="profile.html">
+        <button>Go to My Profile</button>
+      </a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db, auth } from './firebase-config.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+    import { collection, query, where, orderBy, limit, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+
+    const serviceList = document.getElementById('serviceList');
+    const appointmentDate = document.getElementById('appointmentDate');
+    const appointmentTime = document.getElementById('appointmentTime');
+    const staffName = document.getElementById('staffName');
+    const totalDuration = document.getElementById('totalDuration');
+    const totalPrice = document.getElementById('totalPrice');
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return window.location.href = 'login.html';
+      const q = query(
+  collection(db, "appointments"),
+  where("userId", "==", user.uid),
+  orderBy("bookedAt", "desc"),
+  limit(1)
+);
+
+const querySnapshot = await getDocs(q);
+
+if (!querySnapshot.empty) {
+  const appointmentSnap = querySnapshot.docs[0];
+  const data = appointmentSnap.data();
+  const services = data.services || [];
+
+  services.forEach(service => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>•</strong> ${service.name} (${service.duration} min, $${service.price})`;
+    serviceList.appendChild(li);
+  });
+
+  appointmentDate.textContent = data.date || 'N/A';
+  appointmentTime.textContent = data.time || 'N/A';
+  staffName.textContent = data.staffName || 'Any Available';
+  totalDuration.textContent = data.duration || 0;
+
+  // Calculate total price
+  const price = services.reduce((sum, s) => sum + (s.price || 0), 0);
+  totalPrice.textContent = price.toFixed(2);
+
+} else {
+  document.querySelector('.summary').innerHTML = "<p>No appointment found.</p>";
+}
+    });
+  </script>
+    <script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  const backdrop = document.getElementById('backdrop');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  function toggleMenu() {
+    const isOpen = navLinks.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+
+    // Toggle icons
+    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+    closeIcon.style.display = isOpen ? 'inline' : 'none';
+  }
+
+  hamburger.addEventListener('click', toggleMenu);
+
+  // Optional: clicking backdrop closes menu
+  backdrop.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    backdrop.classList.remove('show');
+    hamburgerIcon.style.display = 'inline';
+    closeIcon.style.display = 'none';
+  });
+</script>
+</body>
+</html>

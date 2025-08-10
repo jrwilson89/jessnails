@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gallery</title>
+  <style>
+    .gallery { 
+      display: grid; 
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+      gap: 15px; 
+      padding: 20px;
+    }
+    .gallery-item { 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      background: #fff; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1); 
+      overflow: hidden; 
+      cursor: pointer;
+    }
+    .gallery-item img { 
+      width: 100%; 
+      height: 200px; 
+      object-fit: cover; 
+      transition: transform 0.2s ease;
+    }
+    .gallery-item:hover img {
+      transform: scale(1.05);
+    }
+    .caption { 
+      padding: 10px; 
+      text-align: center; 
+      font-size: 16px;
+      background: #fafafa;
+      width: 100%;
+    }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      flex-direction: column;
+    }
+    .lightbox-content {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .lightbox img {
+      max-width: 90%;
+      max-height: 80%;
+      border-radius: 8px;
+    }
+    .lightbox-caption {
+      margin-top: 10px;
+      color: #fff;
+      text-align: center;
+      font-size: 18px;
+    }
+    .lightbox-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 40px;
+      color: white;
+      background: rgba(0,0,0,0.4);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .arrow-left { left: -70px; }
+    .arrow-right { right: -70px; }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Our Gallery</h2>
+  <div class="gallery" id="gallery"></div>
+
+  <!-- Lightbox -->
+  <div class="lightbox" id="lightbox">
+    <div class="lightbox-content">
+      <div class="lightbox-arrow arrow-left" id="prev">&#10094;</div>
+      <img id="lightboxImg" src="">
+      <div class="lightbox-arrow arrow-right" id="next">&#10095;</div>
+    </div>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+        <script type="module">
+            import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+            import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
+            import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js"
+
+            const firebaseConfig = {
+              apiKey: "AIzaSyAWQ7omdG6SH8RbMHNnvB4TER7G9vLEVB8",
+              authDomain: "jess-nails-9e179.firebaseapp.com",
+              projectId: "jess-nails-9e179",
+              storageBucket: "jess-nails-9e179.firebasestorage.app",
+              messagingSenderId: "983268556246",
+              appId: "1:983268556246:web:7d66dce2d08a222cb43877"
+             };
+
+             const app = initializeApp(firebaseConfig);
+             const storage = getStorage();
+             const listRef = ref(storage, 'gallery');
+             const auth = getAuth();
+
+             listAll(listRef).then((res) => {
+                const imageUrlPromises = res.items.map(itemRef => getDownloadURL(itemRef));
+                return Promise.all(imageUrlPromises);
+                    }).then((urls) => {
+                        const imageContainer = document.getElementById("gallery");
+                        urls.forEach(url => {
+                            const img = document.createElement("img");
+                            img.src = url;
+                            img.alt = "Firebase Image";
+                            img.style.width = "200px";
+                            img.style.height = "200px"
+                            img.style.margin = "10px";
+                            imageContainer.appendChild(img);
+                        });
+                    }) .catch((error) => {
+                        console.error("Error getting download URLs:", error);
+                    });  
+
+        </script>
+</body>
+</html>

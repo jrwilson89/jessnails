@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="watermark">
   <h2>Login</h2>
   <form id="loginForm">
     <input type="email" id="email" placeholder="Email" required />
@@ -11,11 +14,24 @@
     <button type="submit">Login</button>
   </form>
 
+  
+
+  <p>
+    <a href="#" id="forgotPasswordLink">Forgot Password?</a>
+  </p>
+    <p>
+    <a href="register.html" id="create">Create An Account</a>
+  </p>
+
   <script type="module">
     import { auth } from './firebase-config.js';
-    import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import {
+      signInWithEmailAndPassword,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
     const loginForm = document.getElementById('loginForm');
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
 
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -24,10 +40,23 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        alert("Login successful!");
-        window.location.href = "dashboard.html";
+        window.location.href = "manage-gallery.html";
       } catch (error) {
-        alert(error.message);
+        alert("Email and/or password is incorrect.  Please try again.");
+      }
+    });
+
+    forgotPasswordLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const email = prompt("Enter your email to reset your password:");
+
+      if (email) {
+        try {
+          await sendPasswordResetEmail(auth, email);
+          alert("Password reset email sent!");
+        } catch (error) {
+          alert(error.message);
+        }
       }
     });
   </script>

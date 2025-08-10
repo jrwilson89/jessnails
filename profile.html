@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>My Profile</title>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
     .appointment { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
@@ -10,6 +13,28 @@
   </style>
 </head>
 <body>
+  <nav class="navbar">
+    <div class="navbar-logo">
+      <a href="index.html">
+        <img src="images/jn-logo.jpg" alt="Jess Nails Logo" />
+      </a>
+    </div>
+
+    <!-- Hamburger Icon -->
+    <div class="hamburger" id="hamburger">
+      <span id="hamburger-icon">☰</span>
+      <span id="close-icon" style="display: none;">✕</span>
+    </div>
+
+    <!-- Navigation Links -->
+    <ul class="navbar-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="prodserv.html">Services</a></li>
+      <li><a href="profile.html">Profile</a></li>
+      <li><a id="logout" href="login.html">Logout</a></li>
+    </ul>
+  </nav>
+  <div class="backdrop" id="backdrop"></div>
   <h2>My Profile</h2>
   <div id="userInfo"></div>
   <h3>My Appointments</h3>
@@ -20,7 +45,7 @@
     import {
       doc, getDoc, collection, getDocs, updateDoc, deleteDoc, Timestamp, query, where
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import { updateEmail as fbUpdateEmail, updatePassword as fbUpdatePassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 
@@ -131,6 +156,40 @@
         alert("Failed to update phone number: " + error.message);
     }
     };
+
   </script>
+  <script>
+  const hamburger = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  const backdrop = document.getElementById('backdrop');
+  const hamburgerIcon = document.getElementById('hamburger-icon');
+  const closeIcon = document.getElementById('close-icon');
+
+  function toggleMenu() {
+    const isOpen = navLinks.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+
+    // Toggle icons
+    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+    closeIcon.style.display = isOpen ? 'inline' : 'none';
+  }
+
+  hamburger.addEventListener('click', toggleMenu);
+
+  // Optional: clicking backdrop closes menu
+  backdrop.addEventListener('click', () => {
+    navLinks.classList.remove('open');
+    backdrop.classList.remove('show');
+    hamburgerIcon.style.display = 'inline';
+    closeIcon.style.display = 'none';
+  });
+
+      document.getElementById('logout').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href = "login.html";
+    });
+</script>
+
+ 
 </body>
 </html>
