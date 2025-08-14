@@ -194,13 +194,11 @@
 
       const allTimes = availDoc.data().times || [];
 
-      const bookedSnap = await getDocs(query(
-        collection(db, "appointments"),
-        where("date", "==", dateStr),
-        where("staffId", "==", selectedStaff)
-      ));
+      const bookedSnap = await getDocs(collection(db, "bookedSlots", selectedStaff, "dates", dateStr, "times"));
+const bookedTimes = bookedSnap.docs.map(doc => doc.id);
 
-      const bookedTimes = bookedSnap.docs.map(doc => doc.data().time);
+
+      // const bookedTimes = bookedSnap.docs.map(doc => doc.data().time);
       const slotMap = new Set(bookedTimes);
 
       const availableStartTimes = allTimes.filter((_, idx, arr) => {
