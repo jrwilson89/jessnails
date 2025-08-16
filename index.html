@@ -6,7 +6,10 @@
   <title>Jess Nails</title>
   <link rel="stylesheet" href="styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
-
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
 </head>
 
 
@@ -62,31 +65,31 @@
   </footer>
 
 
-    <script>
-  const hamburger = document.getElementById('hamburger');
-  const navLinks = document.getElementById('navLinks');
-  const backdrop = document.getElementById('backdrop');
-  const hamburgerIcon = document.getElementById('hamburger-icon');
-  const closeIcon = document.getElementById('close-icon');
+  <script>
+    const hamburger = document.getElementById('hamburger');
+    const navLinks = document.getElementById('navLinks');
+    const backdrop = document.getElementById('backdrop');
+    const hamburgerIcon = document.getElementById('hamburger-icon');
+    const closeIcon = document.getElementById('close-icon');
 
-  function toggleMenu() {
-    const isOpen = navLinks.classList.toggle('open');
-    backdrop.classList.toggle('show', isOpen);
+    function toggleMenu() {
+      const isOpen = navLinks.classList.toggle('open');
+      backdrop.classList.toggle('show', isOpen);
 
-    // Toggle icons
-    hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
-    closeIcon.style.display = isOpen ? 'inline' : 'none';
-  }
+      // Toggle icons
+      hamburgerIcon.style.display = isOpen ? 'none' : 'inline';
+      closeIcon.style.display = isOpen ? 'inline' : 'none';
+    }
 
-  hamburger.addEventListener('click', toggleMenu);
+    hamburger.addEventListener('click', toggleMenu);
 
-  // Optional: clicking backdrop closes menu
-  backdrop.addEventListener('click', () => {
-    navLinks.classList.remove('open');
-    backdrop.classList.remove('show');
-    hamburgerIcon.style.display = 'inline';
-    closeIcon.style.display = 'none';
-  });
-</script>
+    // Optional: clicking backdrop closes menu
+    backdrop.addEventListener('click', () => {
+      navLinks.classList.remove('open');
+      backdrop.classList.remove('show');
+      hamburgerIcon.style.display = 'inline';
+      closeIcon.style.display = 'none';
+    });
+  </script>
 </body>
 </html>
