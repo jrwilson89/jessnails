@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jess Nails</title>
   <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
 </head>
+
+
 <body class="watermark">
     <nav class="navbar">
     <div class="navbar-logo">
@@ -28,9 +32,36 @@
     </ul>
   </nav>
   <div class="backdrop" id="backdrop"></div>
-  <h1>Welcome to Jess Nails</h1>
-  <a href="register.html">Register</a>
-  <a href="login.html">Login</a>
+  <header class="hero">
+    <div class="hero-container">
+      <!-- Left: Intro + Owner -->
+      <div class="hero-left">
+        <h1>More Than "Just" Art. It's...</h1>
+        <h2>Jess Nails!</h2>
+        <p>Book your appointment today and experience the beauty of Jess Nails.</p>
+        <div class="hero-buttons">
+          <a href="prodserv.html" class="btn primary">View Services</a>
+          <a href="booking.html" class="btn secondary">Book Now</a>
+        </div>
+        <div class="owner">
+          <img src="./images/Jessica.jpg" alt="Owner Jessica" class="owner-photo">
+          <p class="owner-caption">Hi, I’m Jess The Blessed👋 Your nail artist!</p>
+        </div>
+      </div>
+
+      <!-- Right: Nail Samples -->
+      <div class="hero-right">
+        <img src="./images/Sample.jpg" alt="Nail Design 1" class="sample">
+        <img src="./images/Sample 2.jpg" alt="Nail Design 2" class="sample">
+        <img src="./images/Sample 3.jpg" alt="Nail Design 3" class="sample">
+      </div>
+    </div>
+  </header>
+    <footer class="footer">
+    <p>&copy; 2025 JRWS Media. All rights reserved.</p>
+  </footer>
+
+
     <script>
   const hamburger = document.getElementById('hamburger');
   const navLinks = document.getElementById('navLinks');
