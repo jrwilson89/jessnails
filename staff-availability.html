@@ -29,15 +29,26 @@
 
     let currentUser = null;
 
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        currentUser = user;
-        document.getElementById("staffInfo").innerText = `Logged in as: ${user.displayName || user.email}`;
-        document.getElementById("editor").style.display = "block";
-      } else {
-        window.location.href = "/login.html";
-      }
-    });
+      onAuthStateChanged(auth, async user => {
+        if (user) {
+          await user.getIdToken(true); // force refresh claims
+          currentUser = user;
+          const token = await user.getIdTokenResult();
+          console.log("Claims:", token.claims);
+          document.getElementById("staffInfo").innerText =
+            `Logged in as: ${user.displayName || user.email}`;
+          document.getElementById("editor").style.display = "block";
+        } else {
+          window.location.href = "/login.html";
+        }
+
+      });
+
+
+
+      
+
+
 
     function generateTimeSlots(start, end) {
       const slots = [];
@@ -94,11 +105,13 @@
     };
 
     document.getElementById("viewBtn").onclick = () => {
+      
       const date = document.getElementById("date").value;
       if (!date) {
         alert("Please select a date to view availability.");
         return;
       }
+      
       loadExisting(date);
       loadAppointments(date);
     };
@@ -194,6 +207,13 @@
         return;
       }
 
+      const token = await currentUser.getIdTokenResult();
+      if (!token.claims.staff && !token.claims.admin) {
+        alert("You do not have permission to view staff appointments.");
+        return;
+      }
+
+
       snap.forEach(docSnap => {
         const data = docSnap.data();
         const div = document.createElement("div");
@@ -259,6 +279,7 @@ window.cancelAppointment = async (id) => {
     input, button { margin: 5px 0; }
     #preview div, #existing div, #appointments div { padding: 5px; background: #f0f0f0; margin: 2px 0; border-radius: 4px; }
   </style>
+  <link rel="icon" href="images/favicon.ico">
 </head>
   <nav class="navbar">
     <div class="navbar-logo">
@@ -278,6 +299,7 @@ window.cancelAppointment = async (id) => {
       <li><a href="index.html">Home</a></li>
       <li><a href="prodserv.html">Services</a></li>
       <li><a href="profile.html">Profile</a></li>
+      <li><a href="staff-services.html">Service Updates</a></li>      
     </ul>
   </nav>
   <div class="backdrop" id="backdrop"></div>

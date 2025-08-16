@@ -3,6 +3,8 @@
 <head>
   <title>Gallery</title>
   <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    h2 { text-align: center; padding: 20px; }
     .gallery { 
       display: grid; 
       grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
@@ -10,130 +12,206 @@
       padding: 20px;
     }
     .gallery-item { 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      background: #fff; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1); 
-      overflow: hidden; 
-      cursor: pointer;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
     .gallery-item img { 
       width: 100%; 
       height: 200px; 
       object-fit: cover; 
-      transition: transform 0.2s ease;
-    }
-    .gallery-item:hover img {
-      transform: scale(1.05);
-    }
-    .caption { 
-      padding: 10px; 
-      text-align: center; 
-      font-size: 16px;
-      background: #fafafa;
-      width: 100%;
-    }
-
-    /* Lightbox */
-    .lightbox {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      flex-direction: column;
-    }
-    .lightbox-content {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-    .lightbox img {
-      max-width: 90%;
-      max-height: 80%;
       border-radius: 8px;
     }
-    .lightbox-caption {
-      margin-top: 10px;
+    .delete-btn {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #e74c3c;
       color: #fff;
-      text-align: center;
-      font-size: 18px;
-    }
-    .lightbox-arrow {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 40px;
-      color: white;
-      background: rgba(0,0,0,0.4);
-      border-radius: 50%;
-      width: 50px;
-      height: 50px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      border: none;
+      border-radius: 6px;
       cursor: pointer;
-      user-select: none;
     }
-    .arrow-left { left: -70px; }
-    .arrow-right { right: -70px; }
+    .save-btn {
+      margin-top: 5px;
+      padding: 4px 10px;
+      background: #2ecc71;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .caption { margin-top: 8px; font-style: italic; }
+    .caption-input {
+      width: 90%;
+      margin-top: 6px;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .upload-container {
+      max-width: 500px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .upload-container input { margin: 10px 0; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  <h2 style="text-align:center;">Our Gallery</h2>
-  <div class="gallery" id="gallery"></div>
+  <h2>Our Gallery</h2>
 
-  <!-- Lightbox -->
-  <div class="lightbox" id="lightbox">
-    <div class="lightbox-content">
-      <div class="lightbox-arrow arrow-left" id="prev">&#10094;</div>
-      <img id="lightboxImg" src="">
-      <div class="lightbox-arrow arrow-right" id="next">&#10095;</div>
-    </div>
-    <div class="lightbox-caption" id="lightboxCaption"></div>
+  <!-- Upload form (staff only) -->
+  <div class="upload-container hidden" id="uploadContainer">
+    <h3>Upload New Image</h3>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+    <button id="uploadBtn">Upload</button>
+    <p id="uploadStatus"></p>
   </div>
 
-        <script type="module">
-            import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-            import { getStorage, ref, listAll, getDownloadURL } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
-            import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js"
+  <!-- Gallery -->
+  <div class="gallery" id="gallery"></div>
 
-            const firebaseConfig = {
-              apiKey: "AIzaSyAWQ7omdG6SH8RbMHNnvB4TER7G9vLEVB8",
-              authDomain: "jess-nails-9e179.firebaseapp.com",
-              projectId: "jess-nails-9e179",
-              storageBucket: "jess-nails-9e179.firebasestorage.app",
-              messagingSenderId: "983268556246",
-              appId: "1:983268556246:web:7d66dce2d08a222cb43877"
-             };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+    import { getStorage, ref, getDownloadURL, uploadBytes, deleteObject } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, getDocs, query, orderBy } 
+      from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-             const app = initializeApp(firebaseConfig);
-             const storage = getStorage();
-             const listRef = ref(storage, 'gallery');
-             const auth = getAuth();
+    const firebaseConfig = {
+      apiKey: "AIzaSyAWQ7omdG6SH8RbMHNnvB4TER7G9vLEVB8",
+      authDomain: "jess-nails-9e179.firebaseapp.com",
+      projectId: "jess-nails-9e179",
+      storageBucket: "jess-nails-9e179.firebasestorage.app",
+      messagingSenderId: "983268556246",
+      appId: "1:983268556246:web:7d66dce2d08a222cb43877"
+    };
 
-             listAll(listRef).then((res) => {
-                const imageUrlPromises = res.items.map(itemRef => getDownloadURL(itemRef));
-                return Promise.all(imageUrlPromises);
-                    }).then((urls) => {
-                        const imageContainer = document.getElementById("gallery");
-                        urls.forEach(url => {
-                            const img = document.createElement("img");
-                            img.src = url;
-                            img.alt = "Firebase Image";
-                            img.style.width = "200px";
-                            img.style.height = "200px"
-                            img.style.margin = "10px";
-                            imageContainer.appendChild(img);
-                        });
-                    }) .catch((error) => {
-                        console.error("Error getting download URLs:", error);
-                    });  
+    const app = initializeApp(firebaseConfig);
+    const storage = getStorage(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-        </script>
+    // --- Staff UIDs ---
+    const staffUIDs = ["4Jl4cHvtl1VGxb15fBoAaMWzkHG2", "EgNqyPaSYQM5yvwHrCE96EGvh783"];
+    let isStaff = false;
+
+    // --- Load gallery (sorted by newest) ---
+async function loadGallery() {
+  const container = document.getElementById("gallery");
+  container.innerHTML = "";
+
+  const q = query(collection(db, "gallery"), orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+
+  for (const docSnap of snapshot.docs) {
+    const data = docSnap.data();
+    const storagePath = data.path;
+    const captionText = data.caption || "";
+    const docId = docSnap.id;
+
+    if (!storagePath) {
+      console.warn(`Gallery document ${docId} has no storage path.`);
+      continue;
+    }
+
+    const fileRef = ref(storage, storagePath);
+    const url = await getDownloadURL(fileRef);
+
+    const div = document.createElement("div");
+    div.className = "gallery-item";
+    div.innerHTML = `<img src="${url}" alt="Gallery Image">`;
+
+    if (isStaff) {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = captionText;
+      input.className = "caption-input";
+
+      const saveBtn = document.createElement("button");
+      saveBtn.textContent = "Save Caption";
+      saveBtn.className = "save-btn";
+      saveBtn.onclick = async () => {
+        await setDoc(doc(db, "gallery", docId), { caption: input.value, path: storagePath, createdAt: data.createdAt });
+        alert("✅ Caption saved");
+      };
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className = "delete-btn";
+      delBtn.onclick = async () => {
+        if (confirm("Are you sure you want to delete this image?")) {
+          await deleteObject(fileRef);
+          await setDoc(doc(db, "gallery", docId), {}, { merge: false });
+          loadGallery();
+        }
+      };
+
+      div.appendChild(input);
+      div.appendChild(saveBtn);
+      div.appendChild(delBtn);
+    } else {
+      const captionDiv = document.createElement("div");
+      captionDiv.className = "caption";
+      captionDiv.textContent = captionText;
+      div.appendChild(captionDiv);
+    }
+
+    container.appendChild(div);
+  }
+}
+
+
+    // --- Auth check ---
+    onAuthStateChanged(auth, async (user) => {
+      if (user && staffUIDs.includes(user.uid)) {
+        isStaff = true;
+        document.getElementById("uploadContainer").classList.remove("hidden");
+      }
+      loadGallery();
+    });
+
+    // --- Upload handler ---
+    document.getElementById("uploadBtn").addEventListener("click", async () => {
+      if (!isStaff) return alert("You do not have permission to upload.");
+
+      const fileInput = document.getElementById("fileInput");
+      const status = document.getElementById("uploadStatus");
+      const files = fileInput.files;
+      if (!files.length) return alert("Please choose at least one file");
+
+      status.textContent = "Uploading...";
+
+      try {
+        for (const file of files) {
+          const fileName = `${Date.now()}_${file.name}`;
+          const fileRef = ref(storage, `gallery/${fileName}`);
+          await uploadBytes(fileRef, file);
+
+          // Add a Firestore document for each image
+          await setDoc(doc(db, "gallery", fileName), {
+            caption: "",
+            path: fileRef.fullPath,
+            createdAt: Date.now()
+          });
+        }
+
+        status.textContent = `✅ Uploaded ${files.length} image(s)!`;
+        fileInput.value = "";
+        loadGallery();
+      } catch (err) {
+        console.error("Upload failed:", err);
+        status.textContent = "❌ Upload failed.";
+      }
+    });
+
+  </script>
+
 </body>
 </html>
